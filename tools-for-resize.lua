@@ -988,22 +988,22 @@ scale_subtitles.btn = {"&Scale subtitles", "&Cancel"}
 
 
 function resize_canvas.macro(lines)
-	if macro(lines, resize_canvas) then aegisub.set_undo_point("\"" .. trafo.script_name .. "\"") end
+	if macro(lines, resize_canvas) then aegisub.set_undo_point("\"" .. resize_canvas.script_name .. "\"") end
 end
 
 
 function shift_absolute_layout.macro(lines)
-	if macro(lines, shift_absolute_layout) then aegisub.set_undo_point("\"" .. trafo.script_name .. "\"") end
+	if macro(lines, shift_absolute_layout) then aegisub.set_undo_point("\"" .. shift_absolute_layout.script_name .. "\"") end
 end
 
 
 function shift_relative_layout.macro(lines)
-	if macro(lines, shift_relative_layout) then aegisub.set_undo_point("\"" .. trafo.script_name .. "\"") end
+	if macro(lines, shift_relative_layout) then aegisub.set_undo_point("\"" .. shift_relative_layout.script_name .. "\"") end
 end
 
 
 function scale_subtitles.macro(lines)
-	if macro(lines, scale_subtitles) then aegisub.set_undo_point("\"" .. trafo.script_name .. "\"") end
+	if macro(lines, scale_subtitles) then aegisub.set_undo_point("\"" .. scale_subtitles.script_name .. "\"") end
 end
 
 

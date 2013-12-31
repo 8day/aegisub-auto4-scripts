@@ -13,8 +13,8 @@ require "re"
 
 
 script_author = "8day"
-script_version = "1.0"
-script_modified = "27.12.2013"
+script_version = "1.1"
+script_modified = "31.12.2013"
 script_name = "Tools for Resize"
 script_description = "Tools for misc script resizing."
 
@@ -113,7 +113,7 @@ end
 
 local current_trafo_type = ""
 if not intervals_of_sections then local intervals_of_sections = {} end
-local registry = {}
+local registry = {} -- must be predefined!
 local digit_sequence = "(?:[0-9]+)"
 local sign = "[+-]"
 local fraction = string.format("(?:%s?\\.%s|%s\\.)", digit_sequence, digit_sequence, digit_sequence)
@@ -440,10 +440,9 @@ p.drawing_re = format_and_compile_code_re(signed_number .. "|.")
 
 local clip = {}
 function clip.process(opA, operator, opB)
-	local match = {}
+	local match = clip.scaling_factor_re:match(opA)
 	local coordinate = 0
 	local processed_strs = ""
-	match = clip.scaling_factor_re:match(opA)
 	if #match == 4 then
 		processed_strs = match[2]["str"] .. match[3]["str"]
 		opA = match[4]["str"]
@@ -469,10 +468,9 @@ clip.drawing_re = format_and_compile_code_re(signed_number .. "|.")
 
 local iclip = {}
 function iclip.process(opA, operator, opB)
-	local match = {}
+	local match = iclip.scaling_factor_re:match(opA)
 	local coordinate = 0
 	local processed_strs = ""
-	match = iclip.scaling_factor_re:match(opA)
 	if #match == 4 then
 		processed_strs = match[2]["str"] .. match[3]["str"]
 		opA = match[4]["str"]
@@ -498,38 +496,33 @@ iclip.drawing_re = format_and_compile_code_re(signed_number .. "|.")
 
 local org = {}
 function org.process(opA, operator, opB)
-	org["match"] = org.re:match(opA)
+	local match = org.re:match(opA)
 	operator.rep_count = 1
-	opA = org["match"][2]["str"] .. operator.process(org["match"][3]["str"], opB) .. org["match"][4]["str"] .. operator.process(org["match"][5]["str"], opB) .. org["match"][6]["str"]
-	org["match"] = nil
-	return opA
+	return match[2]["str"] .. operator.process(match[3]["str"], opB) .. match[4]["str"] .. operator.process(match[5]["str"], opB) .. match[6]["str"]
 end
 org.re = format_and_compile_code_re("(\\\\org \\s*? \\( \\s*? )({signed_number}) (\\s*? , \\s*?) ({signed_number}) (\\) .*)")
 
 
 local pos = {}
 function pos.process(opA, operator, opB)
-	pos["match"] = pos.re:match(opA)
+	local match = pos.re:match(opA)
 	operator.rep_count = 1
-	opA = pos["match"][2]["str"] .. operator.process(pos["match"][3]["str"], opB) .. pos["match"][4]["str"] .. operator.process(pos["match"][5]["str"], opB) .. pos["match"][6]["str"]
-	pos["match"] = nil
-	return opA
+	return match[2]["str"] .. operator.process(match[3]["str"], opB) .. match[4]["str"] .. operator.process(match[5]["str"], opB) .. match[6]["str"]
 end
 pos.re = format_and_compile_code_re("(\\\\pos \\s*? \\( \\s*? )({signed_number}) (\\s*? , \\s*?) ({signed_number}) (\\) .*)")
 
 
 local move = {}
 function move.process(opA, operator, opB)
-	move["nmb"] = re.split(move.re:match(opA)[4]["str"], ",")
+	local vals = re.split(move.re:match(opA)[4]["str"], ",")
 	operator.rep_count = 1
-	if #move["nmb"] == 4 then
+	if #vals == 4 then
 		-- simple move
-		opA = string.format("\\move(%g,%g,%g,%g)", operator.process(move["nmb"][1], opB), operator.process(move["nmb"][2], opB), operator.process(move["nmb"][3], opB), operator.process(move["nmb"][4], opB))
-	elseif #move["nmb"] == 6 then
+		opA = string.format("\\move(%g,%g,%g,%g)", operator.process(vals[1], opB), operator.process(vals[2], opB), operator.process(vals[3], opB), operator.process(vals[4], opB))
+	elseif #vals == 6 then
 		-- complex move
-		opA = string.format("\\move(%g,%g,%g,%g,%g,%g)", operator.process(move["nmb"][1], opB), operator.process(move["nmb"][2], opB), operator.process(move["nmb"][3], opB), operator.process(move["nmb"][4], opB), move["nmb"][5], move["nmb"][6])
+		opA = string.format("\\move(%g,%g,%g,%g,%g,%g)", operator.process(vals[1], opB), operator.process(vals[2], opB), operator.process(vals[3], opB), operator.process(vals[4], opB), vals[5], vals[6])
 	end
-	move["nmb"] = nil
 	return opA
 end
 move.re = format_and_compile_code_re("(\\\\move \\s*?) (\\( \\s*?) (.+?) (\\s*? \\))")
@@ -537,110 +530,90 @@ move.re = format_and_compile_code_re("(\\\\move \\s*?) (\\( \\s*?) (.+?) (\\s*? 
 
 local bord = {}
 function bord.process(opA, operator, opB)
-	bord.match = bord.re:match(opA)
+	local match = bord.re:match(opA)
 	operator.rep_count = choose_rep_count(opB.type_of_scaling_for_codes_with_one_axes, opB.x, opB.y)
-	opA = bord["match"][2]["str"] .. operator.process(bord["match"][3]["str"], opB) .. bord["match"][4]["str"]
-	bord.match = nil
-	return opA
+	return match[2]["str"] .. operator.process(match[3]["str"], opB) .. match[4]["str"]
 end
 bord.re = format_and_compile_code_re("(\\\\bord \\s*?) ({unsigned_number}) (.*)")
 
 
 local shad = {}
 function shad.process(opA, operator, opB)
-	shad.match = shad.re:match(opA)
+	local match = shad.re:match(opA)
 	operator.rep_count = choose_rep_count(opB.type_of_scaling_for_codes_with_one_axes, opB.x, opB.y)
-	opA = shad["match"][2]["str"] .. operator.process(shad["match"][3]["str"], opB) .. shad["match"][4]["str"]
-	shad.match = nil
-	return opA
+	return match[2]["str"] .. operator.process(match[3]["str"], opB) .. match[4]["str"]
 end
 shad.re = format_and_compile_code_re("(\\\\shad \\s*?) ({signed_number}) (.*)")
 
 
 local fscx = {}
 function fscx.process(opA, operator, opB)
-	fscx["match"] = fscx.re:match(opA)
+	local match = fscx.re:match(opA)
 	operator.rep_count = 1
-	opA = fscx["match"][2]["str"] .. operator.process(fscx["match"][3]["str"], opB) .. fscx["match"][4]["str"]
-	fscx.match = nil
-	return opA
+	return match[2]["str"] .. operator.process(match[3]["str"], opB) .. match[4]["str"]
 end
 fscx.re = format_and_compile_code_re("(\\\\fscx \\s*?) ({unsigned_number}) (.*)")
 
 
 local fscy = {}
 function fscy.process(opA, operator, opB)
-	fscy["match"] = fscy.re:match(opA)
+	local match = fscy.re:match(opA)
 	operator.rep_count = 2
-	opA = fscy["match"][2]["str"] .. operator.process(fscy["match"][3]["str"], opB) .. fscy["match"][4]["str"]
-	fscy.match = nil
-	return opA
+	return match[2]["str"] .. operator.process(match[3]["str"], opB) .. match[4]["str"]
 end
 fscy.re = format_and_compile_code_re("(\\\\fscy \\s*?) ({unsigned_number}) (.*)")
 
 
 local xbord = {}
 function xbord.process(opA, operator, opB)
-	xbord.match = xbord.re:match(opA)
+	local match = xbord.re:match(opA)
 	operator.rep_count = 1
-	opA = xbord["match"][2]["str"] .. operator.process(xbord["match"][3]["str"], opB) .. xbord["match"][4]["str"]
-	xbord.match = nil
-	return opA
+	return match[2]["str"] .. operator.process(match[3]["str"], opB) .. match[4]["str"]
 end
 xbord.re = format_and_compile_code_re("(\\\\xbord \\s*?) ({unsigned_number}) (.*)")
 
 
 local ybord = {}
 function ybord.process(opA, operator, opB)
-	ybord.match = ybord.re:match(opA)
+	local match = ybord.re:match(opA)
 	operator.rep_count = 2
-	opA = ybord["match"][2]["str"] .. operator.process(ybord["match"][3]["str"], opB) .. ybord["match"][4]["str"]
-	ybord.match = nil
-	return opA
+	return match[2]["str"] .. operator.process(match[3]["str"], opB) .. match[4]["str"]
 end
 ybord.re = format_and_compile_code_re("(\\\\ybord \\s*?) ({unsigned_number}) (.*)")
 
 
 local xshad = {}
 function xshad.process(opA, operator, opB)
-	xshad.match = xshad.re:match(opA)
+	local match = xshad.re:match(opA)
 	operator.rep_count = 1
-	opA = xshad["match"][2]["str"] .. operator.process(xshad["match"][3]["str"], opB) .. xshad["match"][4]["str"]
-	xshad.match = nil
-	return opA
+	return match[2]["str"] .. operator.process(match[3]["str"], opB) .. match[4]["str"]
 end
 xshad.re = format_and_compile_code_re("(\\\\xshad \\s*?) ({signed_number}) (.*)")
 
 
 local yshad = {}
 function yshad.process(opA, operator, opB)
-	yshad.match = yshad.re:match(opA)
+	local match = yshad.re:match(opA)
 	operator.rep_count = 2
-	opA = yshad["match"][2]["str"] .. operator.process(yshad["match"][3]["str"], opB) .. yshad["match"][4]["str"]
-	yshad.match = nil
-	return opA
+	return match[2]["str"] .. operator.process(match[3]["str"], opB) .. match[4]["str"]
 end
 yshad.re = format_and_compile_code_re("(\\\\yshad \\s*?) ({signed_number}) (.*)")
 
 
 local pbo = {}
 function pbo.process(opA, operator, opB)
-	pbo.match = pbo.re:match(opA)
+	local match = pbo.re:match(opA)
 	operator.rep_count = 2
-	opA = pbo["match"][2]["str"] .. operator.process(pbo["match"][3]["str"], opB) .. pbo["match"][4]["str"]
-	pbo.match = nil
-	return opA
+	return match[2]["str"] .. operator.process(match[3]["str"], opB) .. match[4]["str"]
 end
 pbo.re = format_and_compile_code_re("(\\\\pbo \\s*?) ({signed_number}) (.*)")
 
 
 local blur = {}
 function blur.process(opA, operator, opB)
-	blur.match = blur.re:match(opA)
+	local match = blur.re:match(opA)
 	operator.rep_count = choose_rep_count(opB.type_of_scaling_for_codes_with_one_axes, opB.x, opB.y)
-	opA = blur["match"][2]["str"] .. operator.process(blur["match"][3]["str"], opB) .. blur["match"][4]["str"]
-	blur.match = nil
-	return opA
+	return match[2]["str"] .. operator.process(match[3]["str"], opB) .. match[4]["str"]
 end
 blur.re = format_and_compile_code_re("(\\\\blur \\s*?) ({unsigned_number}) (.*)")
 
